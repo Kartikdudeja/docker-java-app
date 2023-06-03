@@ -1,0 +1,120 @@
+
+version: '3.8'
+
+services:
+
+  vprodb:
+
+    container_name: vprodb
+    hostname: vprodb
+
+    build:
+      context: ./db
+
+    ports:
+      - "3306:3306"
+
+    expose:
+      - 3306
+
+    volumes:
+      - vprodbdata:/var/lib/mysql
+
+    environment:
+      - MYSQL_ROOT_PASSWORD=vprodbpass
+
+    networks:    
+      custom-network:
+
+  vprocache01:
+
+    container_name: vprocache01
+    hostname: vprocache01
+
+    image: memcached
+    
+    ports:
+      - "11211:11211"
+
+    expose:
+      - 11211
+
+    networks:    
+      custom-network:
+
+  vpromq01:
+
+    container_name: vpromq01
+    hostname: vpromq01
+
+    image: rabbitmq
+
+    ports:
+      - "15672:15672"
+
+    expose:
+      - 15672
+
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
+    networks:    
+      custom-network:
+
+  vproapp:
+    
+    container_name: vproapp
+    hostname: vproapp
+    
+    build:
+      context: ./app
+
+    ports:
+      - "8080:8080"
+
+    expose:
+      - 8080
+
+    volumes:
+      - vproappdata:/usr/local/tomcat/webapps
+
+    depends_on:
+      - vprodb
+      - vprocache01
+      - vpromq01
+
+    networks:    
+      custom-network:
+
+  vproweb:
+
+    container_name: vproweb
+    hostname: vproweb
+
+    build:
+      context: ./web
+
+    ports:
+      - "80:80"
+
+    expose:
+      - 80
+
+    depends_on:
+      - vproapp
+
+    networks:    
+      custom-network:
+
+volumes:
+  vprodbdata: {}
+  vproappdata: {}
+
+networks:
+  custom-network: 
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 172.24.2.0/28
+         gateway: 172.24.2.1
